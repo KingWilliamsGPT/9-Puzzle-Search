@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9 Puzzle Problem</title>
+
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <div class="container mt-3 ">
+        
+        
+        <div class="puzzle m-auto">
+            <div class="row">
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            1
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            2
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            3
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            D
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            4
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            5
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex can-transfer">
+                        <div class="box-inner m-auto">
+                            6
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex can-transfer">
+                        <div class="box-inner m-auto">
+                            E
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="box d-flex">
+                        <div class="box-inner m-auto">
+                            7
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box d-flex can-transfer">
+                        <div class="box-inner m-auto">
+                            8
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box box-hole d-flex">
+                        <div class="box-inner m-auto">
+                            9
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="box box-hole d-flex on-transfer">
+                        <div class="box-inner m-auto">
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="row mt-3">
+            <div class="">
+                <div class="form-group">
+                    <select name="algorithm" id="algorithm" class="form-control">
+                        <option value="dfs">depth first search</option>
+                        <option value="sfs">shallow first search</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button id="rb" class="btn btn-default">randomise board</button>
+                    <button id="sb" class="btn btn-default">solve board</button>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+
+    <!-- loader -->
+    <!-- <div class="lds-roller"><div></div><div></div><div></div><div></di
+        v><div></div><div></div><div></div><div></div></div> -->
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="./js/9_puzzle_ui.js"></script>
+</body>
+</html>
