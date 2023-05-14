@@ -491,6 +491,7 @@ const search = new (function(){
          */
         
         constructor(stateMap, env, birthMove){
+            this._stateMap = stateMap;
             this._state = copyStateMap(stateMap); // reference to `state` still exists :Map()
             this._env = env;
             this.$hole = env.$holeDomElem; // :jQuery()
@@ -498,25 +499,25 @@ const search = new (function(){
 
             // move that birthed this state
             this.birthMove = birthMove? birthMove: null;
+
+            // instead of looping to check if states compare I'll save a primitive version of state
+            this.primitiveState = this.getPrimitiveState();
         }
         
+        getPrimitiveState(){
+            // [[0,0], [0,1], ...] => '00.01...'
+            // sample '00.01.02.03.10.11.12.13.20.21.22.23'
+            console.log(this._stateMap);
+            return [...this._stateMap.values()]
+                .map(function(i){
+                    return i.join('');
+                })
+                .join('.');
+        }
         equals(state){
-            const s1 = this._state,
-                  s2 = state._state;
-            
-            for (let [cell, s1_index] of s1) {
-                let s2_index = s2.get(cell);
-                console.log(s1_index);
-                if(s1_index == null){
-                    console.log('state 1', s1);
-                    console.log('state 2', s2)
-                }
-                if(s1_index.notEquals(s2_index)){
-                    return false;
-                }
-            }
-
-            return true;
+            const s1 = this.primitiveState,
+                  s2 = state.primitiveState;
+            return s1 == s2;
         }
 
         * getPossibleStates(){
@@ -639,7 +640,6 @@ const search = new (function(){
         }
 
         get isEmpty(){
-            this._pop();
             return this._nodes.length == 0;
         }
     }
