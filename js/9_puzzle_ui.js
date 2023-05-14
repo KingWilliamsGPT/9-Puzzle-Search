@@ -7,24 +7,6 @@
  */
 
 
-
-// HELPERS
-
-
-function swapClasses(swap){ //issues with swapping
-    const [k1, k2] = [swap[0].klass, swap[1].klass];
-    const [e1, e2] = [swap[1].element, swap[1].element];
-    console.log('k1', k1, 'k2', k2);
-    e1[0].classList.replace(k1, k2);
-    e2[0].classList.replace(k2, k1);
-    // e2.removeClass(k2);
-    // e1.removeClass(k1);
-    // e1.addClass(k2);
-    // e2.addClass(k1);
-}
-
-
-
 // CLASSES
 
 /**
@@ -53,10 +35,7 @@ class Puzzle{
         this.cols = null;
         this.initialState = null;
         this.currentState = null;
-        this.holeDomElem = null;
-        // anim
-        this.boxHeight = null;
-        this.boxWidth = null;
+        this.$holeDomElem = null;
         // agent
         this.agent = null;
         // private
@@ -64,64 +43,36 @@ class Puzzle{
     }
 
     get holeIndex(){
-       return this.initialState.get(this.holeDomElem);
+       return this.currentState.get(this.$holeDomElem);
     }
 
     loadState(){
-        /** Load resolved state from UI memory
+        /** Loads resolved state from UI memory
          * 
-        * the state loaded is not neccessary the state the user will start
-        * interracting from. This is just to make sure the **resolved state**;
-        * the current state of the UI is known before hand.
+        * the state loaded from the dom is not neccessary the state the user will start 
+        * interracting with. 
         * 
-        * call .configure() to load a state
-        * 
-        * Note: that the last element of the last row is considered the hole
-        *       and that all cells are assumed to arranged properly (as it is considered the resolved state).
+        * The state loaded from the dom is assumed to be the resolved state
         */
 
-        let i = 0;
-        let last_element = null;  // so to know the last element after the iteration
-
-        const UIBoxes = new Map();
+        const currentState = new Map(); // at first the current state is a copy of the initial state
         const initialState = new Map();
-
+        
+        let $last_element = null;
+        
         this.rows = this.cols = 0;
 
         // get board state
         for(let [row_i, row] of enumerate($(this.puzzle).find('.row'))){
             let s_row = [];
             for (let [col_i, col] of enumerate($(row).find('.col'))){
+                let $box = $(col).find('.box');
                 
-                let box = $(col).find('.box');
-                s_row.push(i);
-
-                // experimental setting div[class="box b_i"]
-                let ui_class = `b_${i}`;
-                box.addClass(ui_class);
-                i++;
-                
-                UIBoxes.set(box, [row_i, col_i]);
-                initialState.set(box, [row_i, col_i]);
-                box.data('row', row_i);
-                box.data('col', col_i);
-
-
-                // experimental used for swapping animation
-                this.boxHeight = box.height();
-                this.boxWidth = box.width();
-
-                // set some animation events
-                box.on('transitionstart', function(){
-                    $(box).addClass('on-transfer');
-                })
-
-                box.on('transitionend', function(){
-                    $(box).removeClass('on-transfer');
-                })
+                currentState.set($box, [row_i, col_i]);
+                initialState.set($box, [row_i, col_i]);
 
                 // set last element
-                last_element = box;
+                $last_element = $box;
                 
                 // set global dimension
                 this.cols = col_i + 1;
@@ -130,20 +81,22 @@ class Puzzle{
             this.rows = row_i + 1;
         }
 
-        // the last element is considered to be the hole
-        const box = last_element;
-        box.addClass('box-hole');
-        this.holeDomElem = box;
+        // set hole as last elems
+        const $box = $last_element;
+        $box.addClass('box-hole');
+        this.$holeDomElem = $box;
         
         // state
-        // const hole = [2, 2];
-        // this.state = new State(state, hole);
-        this.currentState = UIBoxes;
+        this.currentState = currentState;
         this.initialState = initialState;
     }
 
     loadAgent(){
-        this.agent = new search.Agent(this);
+        try{
+           this.agent = new search.Agent(this);
+        }catch(e){
+            console.error('Agent could not be loaded successfuly');
+        }
     }
 
     config(){
@@ -154,6 +107,9 @@ class Puzzle{
          */
 
         this.bind();
+        this.highlightCells();
+
+        this.loadAgent();
     }
 
     bind(){
@@ -162,17 +118,17 @@ class Puzzle{
          */
 
         if(this._is_configured){
-            // this.puzzle.find('.box').on('click', function(ev){
-            //     const cell = $(ev.target);
-            // })
-            for(let [domElement, _] of this.currentState){
-                domElement.on('click', ()=>{
-                    this.swap(domElement);
+            for(let [$domElement, _] of this.currentState){
+                $domElement.on('click', ()=>{
+                    try{
+                        this.swap($domElement); // swap hole with $domElement
+                    }catch(e){
+                        console.error(e);
+                    }
                 });
             }
         }
 
-        this.highlightCells();
     }
     
     _swap(cell1, cell2){
@@ -188,71 +144,23 @@ class Puzzle{
 
         // swap UI's
         const hold_parent = cell1.parent();
-        cell2.parent().append(cell1.detach());
+        cell2.parent().append(cell1.detach()); // using $.detach() the events are still binded
         hold_parent.append(cell2.detach());
 
     }
 
-    swap(domElement){
-        // swap `domElement` with hole
+    swap($domElement){
+        // swap `$domElement` with hole
 
-        const holeIndex = this.currentState.get(this.holeDomElem);
-        const index = this.currentState.get(domElement);
+        const holeIndex = this.currentState.get(this.$holeDomElem);
+        const index = this.currentState.get($domElement);
 
-        if (domElement == this.holeDomElem || !new Hole(holeIndex).canMove(new Cell(index))) {
-            console.log('can not click this cell');
-            return;
+        if ($domElement == this.$holeDomElem || !new Hole(holeIndex).canMove(new Cell(index))) {
+            throw Error('Can not click this cell');
         }
 
-        this._swap(this.holeDomElem, domElement);
+        this._swap(this.$holeDomElem, $domElement);
         this.highlightCells()
-        // console.log('current hole index', holeIndex);
-        // console.log('current other index', index);
-        
-        // const [rowdx, coldx] = [index[0] - holeIndex[0], index[1] - holeIndex[1]];
-        // const [top, right] = [rowdx * this.boxHeight, coldx * this.boxWidgth];
-
-        // // swap positions
-        // domElement.addClass('on-transfer');
-
-        // domElement.css({top: -top, right:right, zIndex:500});
-        // this.holeDomElem.css({top: top, right: -right});
-
-        // swap classes
-        // setTimeout(()=>{
-        //     swapClasses([
-        //         {element: domElement, klass: getBoxClassPos(domElement[0])},
-        //         {element: this.holeDomElem, klass: getBoxClassPos(this.holeDomElem[0])}
-        //     ]);
-        // }, 1000)
-
-        // swap indexes
-        // this.currentState.set(domElement, holeIndex);
-        // this.currentState.set(this.holeDomElem, index);
-
-        // swap dom heirarchy
-        // const dom_parent = domElement.parent();
-        // const hole_parent = this.holeDomElem.parent();
-
-        // domElement.on('transitionend', ()=>{
-        //     console.log('touching dom');
-        //     const h_p = this.holeDomElem.parent();
-        //     domElement.parent().append(this.holeDomElem.detach());
-        //     h_p.append(domElement.detach());
-            
-        //     // reset positions
-        //     domElement[0].style.top = null;
-        //     domElement[0].style.right = null;
-        //     domElement[0].style.zIndex = null;
-        //     this.holeDomElem[0].style.top = null;
-        //     this.holeDomElem[0].style.right = null;
-        //     this.holeDomElem[0].style.zIndex = null;
-        // });
-
-        // const h_p = this.holeDomElem.parent();
-        // domElement.parent().append(this.holeDomElem.detach());
-        // h_p.append(domElement.detach());
-
     }
 
     randomiseBoard(){
@@ -272,20 +180,30 @@ class Puzzle{
         /**The best, optimal way to highlight necessary cells is by indexing relative to the hole
          * here i'll just lazily loop through all the values. :)
          */
-        for(let cell of this.currentState.keys()){
-            let _cell = cell;
-            cell = new Cell(this.currentState.get(cell));
-            let hole = new Hole(this.currentState.get(this.holeDomElem));
+        for(let $cell of this.currentState.keys()){
+            let cell = new Cell(this.currentState.get($cell));
+            let hole = new Hole(this.currentState.get(this.$holeDomElem));
             if(hole.canMove(cell)){
-                _cell.addClass('can-transfer');
+                $cell.addClass('can-transfer');
             }else{
-                _cell.removeClass('can-transfer');
+                $cell.removeClass('can-transfer');
             }
         }
     }
 
     getSolution(){
+        if(this.agent ==  null){
+            return console.error('The agent was not loaded');
+        }
+        
+        const solution = this.agent.solve(this.currentState);
+        // what to do with solution
+    }
 
+    takeAction(action){
+        /**Experimental
+         * take action while solving the search problem
+         */
     }
 }
 
@@ -293,7 +211,8 @@ class Puzzle{
 $(function load(){
     console.log('working..');
     const puzzle_elem = $('.puzzle');
-     puzzle = new Puzzle(puzzle_elem);
+    
+    puzzle = new Puzzle(puzzle_elem);
 
     // load board
     puzzle.loadState();

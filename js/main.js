@@ -43,6 +43,39 @@ function delFromArray(array, i){
 }
 
 
+Array.prototype.equals = function equals(otherArray){
+    // equality for arrays
+    // [1,2,3].equals([1,2,3])
+    // 
+    // equality for deeply nested arrays 
+    // [[]].equals([[]])   // true
+
+    if(!this.length && this.length == otherArray.length){
+        return true;
+    }
+    if(this.length != otherArray.length){
+        return false;
+    }
+    for(let i of range(0, this.length)){
+        let [a, b] = [this[i], otherArray[i]];
+        if(Array.isArray(a) && Array.isArray(b)){
+            // [1,2,[3]].equals([1,2,[3]]) #bug
+            if(!a.equals(b)){
+                return false;
+            }
+        }else{
+            if(a !== b){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+Array.prototype.notEquals = function notEquals(otherArray){
+    return !this.equals(otherArray);
+}
+
 // randomness
 
 function rand(min, max) {
@@ -432,39 +465,7 @@ const search = new (function(){
     //     });
     // }
 
-    Array.prototype.equals = function equals(otherArray){
-        // equality for arrays
-        // [1,2,3].equals([1,2,3])
-        // 
-        // equality for deeply nested arrays 
-        // [[]].equals([[]])   // true
-
-        if(!this.length && this.length == otherArray.length){
-            return true;
-        }
-        if(this.length != otherArray.length){
-            return false;
-        }
-        for(let i of range(0, this.length)){
-            let [a, b] = [this[i], otherArray[i]];
-            if(Array.isArray(a) && Array.isArray(b)){
-                if(!a.equals(b)){
-                    return false;
-                }
-            }else{
-                if(a !== b){
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    Array.prototype.notEquals = function notEquals(otherArray){
-        return !this.equals(otherArray);
-    }
-
-    function copyState(state){
+    function copyStateMap(state){
         // return copy: Map() of state: Map()
         // reference to state still exists
         // the copy is thus shallow if keys or values are passed by reference
@@ -475,7 +476,7 @@ const search = new (function(){
         return copy;
     }
 
-    function createAltState(state){
+    function createAltStateMap(state){
         // swap keys with values
         return new Map([...zip(state.values(), state.keys())]);
     }
@@ -489,10 +490,10 @@ const search = new (function(){
          * new State() should treated as an immutable object
          */
         
-        constructor(state, env, birthMove){
-            this._state = copyState(state); // reference to `state` still exists :Map()
+        constructor(stateMap, env, birthMove){
+            this._state = copyStateMap(stateMap); // reference to `state` still exists :Map()
             this._env = env;
-            this._hole = env.holeDomElem; // :jQuery()
+            this.$hole = env.$holeDomElem; // :jQuery()
             this.holeCell = new Hole(env.holeIndex, env.rows, env.cols);
 
             // move that birthed this state
@@ -505,6 +506,11 @@ const search = new (function(){
             
             for (let [cell, s1_index] of s1) {
                 let s2_index = s2.get(cell);
+                console.log(s1_index);
+                if(s1_index == null){
+                    console.log('state 1', s1);
+                    console.log('state 2', s2)
+                }
                 if(s1_index.notEquals(s2_index)){
                     return false;
                 }
@@ -513,89 +519,62 @@ const search = new (function(){
             return true;
         }
 
-        getPossibleStates(){
+        * getPossibleStates(){
             // get hole 
             const holeCell = this.holeCell;
-            const states = [];
 
             for (let move of holeCell.getMoves()) {
-                states.push(new State(this.takeAction(move), this._env, move));
+                let state = this.takeAction(move);
+                yield state;
             }
-
-            return states;
         }
 
         takeAction(action){
             // returns resulting state of taking `action` on this state
-            // takeAction(action) -> Map()
+
             const sCells = this.holeCell.grabSurroundingCells();
             
-            const s = copyState(this._state),
-                  alt = createAltState(s),
-                  hold = s.get(this._hole);
+            const s = copyStateMap(this._state),
+                  alt = createAltStateMap(s),
+                  hold = s.get(this.$hole);
 
-            s.birthMove = action;
             
             if (action == MOVES.UP) {
                 // move hole up
-                s.set(this._hole, sCells.top);
+                s.set(this.$hole, sCells.top);
                 s.set(alt.get(sCells.top), hold);
-                return s;
             }
-            if (action == MOVES.DOWN) {
+            else if (action == MOVES.DOWN) {
                 // move hole down
-                s.set(this._hole, sCells.bottom);
+                s.set(this.$hole, sCells.bottom);
                 s.set(alt.get(sCells.bottom), hold);
-                return s;
             }
-            if (action == MOVES.RIGHT) {
+            else if (action == MOVES.RIGHT) {
                 // move hole right
-                s.set(this._hole, sCells.right);
+                s.set(this.$hole, sCells.right);
                 s.set(alt.get(sCells.right), hold);
-                return s;
             }
-            if (action == MOVES.LEFT) {
+            else if (action == MOVES.LEFT) {
                 // move hole left
-                s.set(this._hole, sCells.left);
+                s.set(this.$hole, sCells.left);
                 s.set(alt.get(sCells.left), hold);
-                return s;
+            }else{
+                throw Error('invalid action provided');
             }
+
+            return new State(s, this._env, action);
         }
     }
-    this.State = State;
     
-
-    class NodeSet{
-        // class to carry nodes
-        constructor(nodes, parent){
-            this.nodes = [];
-
-            if(isState(parent)){
-                parent = new Node(parent);
-            }
-
-            for (let node of nodes){
-                if(isState(node)){
-                    node = new Node(node, parent);
-                }
-                if(!isNode(node)){
-                    throw Error('all values of `nodes` must be states or nodes');
-                }
-
-                this.nodes.push(node);
-            }
-        }
-    }
-    this.NodeSet = NodeSet;
-
 
     class Node{
         constructor(state, parent){
             this.state = state; // : State()
             this.parent = parent;
+            this.action = this.state.birthMove;
             this.pathCost = 0;
             if(parent){
-                parent.pathCost = parent.pathCost + 1;
+                parent.pathCost++;
             }
         }
 
@@ -603,12 +582,17 @@ const search = new (function(){
             return this.state.equals(node.state);
         }
 
-        expand(){
+        * _expand(){
             // return possible nodes from this node
-            return new NodeSet(this.state.getPossibleStates(), parent=this);
+            for(let state of this.state.getPossibleStates()){
+                yield new Node(state, this);
+            }
+        }
+
+        expand(){
+            return [...this._expand()];
         }
     }
-    this.Node = Node;
 
 
     class StackFrontier{
@@ -627,9 +611,7 @@ const search = new (function(){
                 throw Error('Frontier accepts only nodes');
             }
 
-            if(!this.has(node)){
-                this._add(node);
-            }
+            this._add(node);
         }
 
         has(node){
@@ -645,60 +627,78 @@ const search = new (function(){
             return false;
         }
 
+        _pop(){
+            if (this.isEmpty){
+                throw Error('Cannot remove item from empty frontier');
+            }
+        }
+
         pop(){
+            this._pop();
             return this._nodes.pop();
         }
 
         get isEmpty(){
+            this._pop();
             return this._nodes.length == 0;
         }
     }
-    this.StackFrontier = StackFrontier;
 
 
     class QueueFrontier extends StackFrontier{
         pop(){
+            if (this.isEmpty){
+                throw Error('Cannot remove item from empty frontier');
+            }
             return this._nodes.splice(0, 1, )[0];
         }
     }
-    this.QueueFrontier = QueueFrontier;
 
     class NoSolutionError extends Error{}
+
+
     class Solution{}
+
 
     class Agent{
 
         constructor(env){
             this.env = env;
-            this.resolved_state = null;
+            this.resolvedState = new State(env.initialState, env);
         }
 
         solve(initialStateMap){
-            const frontier = null;
-            const explored_set = null;
+            const frontier = new StackFrontier();
+            const explored_set = new StackFrontier();
+            const goal = new Node(this.resolvedState);
 
             // start frontier with initial state
-            const initialState = new this.State(initialStateMap, this.env.hole, this.env);
+            const initialState = new State(initialStateMap, this.env);
             const node = new Node(initialState);
             frontier.add(node);
+            console.log(node);
 
 
             while (true){
                 if(frontier.isEmpty){
-                    throw NoSolutionError('The goal state could not be found');
+                    throw Error('The goal state could not be found');
                 }
 
                 // remove a single node from the frontier
                 let node = frontier.pop();
 
+                console.log('comparing with goal...');
+
                 if(node.equals(goal)){
                     // found solution
-
+                    console.log('found solution');
+                    return
                 }else{
-                    
-                    let nodeSet = node.expand();    // expand the node
+                    console.log('not goal expanding...')
+                    let nodes = node.expand();    // expand the node
+                    console.log(`expanding (${nodes.length}) nodes`);
 
-                    for(node of nodeSet){
+                    for(node of nodes){
                         if(explored_set.has(node))
                             continue
                         
@@ -709,6 +709,12 @@ const search = new (function(){
             }
         }
     }
+    
     this.Agent = Agent
+    this.State = State;
+    this.Node = Node;
+    this.StackFrontier = StackFrontier;
+    this.QueueFrontier = QueueFrontier;
+
 
 })()
