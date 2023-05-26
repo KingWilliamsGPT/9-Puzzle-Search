@@ -32,6 +32,17 @@ function getBoxClassPos(box){
     }
 }
 
+// time
+
+function sleep(miliseconds){
+    const then = new Date().getTime();
+    while(true){
+        let delta = new Date().getTime() - then;
+        if(delta >= miliseconds){
+            break;
+        }
+    }
+}
 
 // array
 function lastElement(thing){
@@ -135,10 +146,32 @@ function *range(start, stop, skip){
     }
 }
 
+function isIterable(object){
+    // It would be better if there was a property of iterables
+    // that would state that it's an iterable
+    try{
+        for(let i of object)
+            break;
+    }catch(error){
+        if(error.name === 'TypeError'){
+            return false;
+        }
+    }
+    return true;
+}
 
 function* iter(object){
-    for(let i=0; i<object.length; i++){
-        yield object[i];
+    // iterables need not be made iterable
+    if(isIterable(object)){
+        // #Bug only loops through one item 
+        for(let j of object){
+            yield j;
+        }
+
+    }else{
+        for(let i=0; i<object.length; i++){
+            yield object[i];
+        }
     }
 }
 
@@ -195,7 +228,7 @@ class Cell{
 
     isAtLastCol(){
         // returns true if cell is at last col
-        return this.cellIndex[1] == this.rows - 1;
+        return this.cellIndex[1] == this.cols - 1;
     }
 
     isAtTopOrBottom(){
@@ -257,7 +290,7 @@ class Cell{
     }
     isAtTopRight(){
         // returns true if hole is at top right
-        return this.isAtTop() && this.isAtFirstCol();
+        return this.isAtTop() && this.isAtLastCol();
     }
     
     isAtBottomLeft(){
@@ -344,18 +377,34 @@ class Cell{
         return true;
     }
 
-    grabSurroundingCells(){
+    grabSurroundingCells(references){
         // grab surrounding cells in a cross like pattern
 
         const [row, col] = this.cellIndex;
         const _ = index => this.validateIndex(index) ? index : null;
 
-        return {
+        // if I return this I'll end up passing by values
+        const sorrounding_indices = {
             top:    _([row-1, col]),
             bottom: _([row+1, col]),
             left:   _([row, col-1]),
             right:  _([row, col+1])
         }
+
+        // OK you probaly wondering why @references
+        // problem: sorounding_indices generates new arrays loosing my references
+        const t = ['top', 'bottom', 'left', 'right'];
+
+        for(let ref of references){
+            for(let i of t){
+                let index = sorrounding_indices[i];
+                if(Array.isArray(index) && index.equals(ref)){
+                    sorrounding_indices[i] = ref;
+                }
+            }
+        }
+
+        return sorrounding_indices;
     }
 }
 
@@ -478,7 +527,7 @@ const search = new (function(){
 
     function createAltStateMap(state){
         // swap keys with values
-        return new Map([...zip(state.values(), state.keys())]);
+        return new Map([...zip([...state.values()], [...state.keys()])]);
     }
 
 
@@ -507,13 +556,13 @@ const search = new (function(){
         getPrimitiveState(){
             // [[0,0], [0,1], ...] => '00.01...'
             // sample '00.01.02.03.10.11.12.13.20.21.22.23'
-            console.log(this._stateMap);
             return [...this._stateMap.values()]
                 .map(function(i){
                     return i.join('');
                 })
                 .join('.');
         }
+
         equals(state){
             const s1 = this.primitiveState,
                   s2 = state.primitiveState;
@@ -523,7 +572,6 @@ const search = new (function(){
         * getPossibleStates(){
             // get hole 
             const holeCell = this.holeCell;
-
             for (let move of holeCell.getMoves()) {
                 let state = this.takeAction(move);
                 yield state;
@@ -533,35 +581,50 @@ const search = new (function(){
         takeAction(action){
             // returns resulting state of taking `action` on this state
 
-            const sCells = this.holeCell.grabSurroundingCells();
+            const sCells = this.holeCell.grabSurroundingCells(this._state.values()); // sorrounding cells
             
             const s = copyStateMap(this._state),
                   alt = createAltStateMap(s),
                   hold = s.get(this.$hole);
 
+            var otherCell = null;
             
             if (action == MOVES.UP) {
                 // move hole up
                 s.set(this.$hole, sCells.top);
                 s.set(alt.get(sCells.top), hold);
+
+                otherCell = sCells.top;
             }
             else if (action == MOVES.DOWN) {
                 // move hole down
                 s.set(this.$hole, sCells.bottom);
                 s.set(alt.get(sCells.bottom), hold);
+                
+                otherCell = sCells.bottom;
             }
             else if (action == MOVES.RIGHT) {
                 // move hole right
                 s.set(this.$hole, sCells.right);
                 s.set(alt.get(sCells.right), hold);
+
+                otherCell = sCells.right;
             }
             else if (action == MOVES.LEFT) {
                 // move hole left
                 s.set(this.$hole, sCells.left);
                 s.set(alt.get(sCells.left), hold);
+
+                otherCell = sCells.left;
             }else{
                 throw Error('invalid action provided');
             }
+
+            // @!experimental - update ui while searching
+            // setTimeout(()=>this._env._swap(this.$hole, alt.get(otherCell)), 1000);
+            // sleep(500);
+            console.log(alt.get(otherCell));
+            this._env.swap(alt.get(otherCell));
 
             return new State(s, this._env, action);
         }
@@ -583,16 +646,13 @@ const search = new (function(){
             return this.state.equals(node.state);
         }
 
-        * _expand(){
+        * expand(){
             // return possible nodes from this node
             for(let state of this.state.getPossibleStates()){
                 yield new Node(state, this);
             }
         }
 
-        expand(){
-            return [...this._expand()];
-        }
     }
 
 
@@ -650,7 +710,7 @@ const search = new (function(){
             if (this.isEmpty){
                 throw Error('Cannot remove item from empty frontier');
             }
-            return this._nodes.splice(0, 1, )[0];
+            return this._nodes.splice(0, 1, )[0]; // pop first item
         }
     }
 
@@ -676,7 +736,6 @@ const search = new (function(){
             const initialState = new State(initialStateMap, this.env);
             const node = new Node(initialState);
             frontier.add(node);
-            console.log(node);
 
 
             while (true){
@@ -686,17 +745,16 @@ const search = new (function(){
 
                 // remove a single node from the frontier
                 let node = frontier.pop();
-
-                console.log('comparing with goal...');
+                
+                console.log("Pick a node");
 
                 if(node.equals(goal)){
                     // found solution
                     console.log('found solution');
                     return
                 }else{
-                    console.log('not goal expanding...')
+                    console.log('Expanding...')
                     let nodes = node.expand();    // expand the node
-                    console.log(`expanding (${nodes.length}) nodes`);
 
                     for(node of nodes){
                         if(explored_set.has(node))

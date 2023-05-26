@@ -45,6 +45,25 @@ class Puzzle{
     get holeIndex(){
        return this.currentState.get(this.$holeDomElem);
     }
+    
+    get holeCell(){
+        return new Hole(this.holeIndex, this.rows, this.cols);
+    }
+
+    get holePos(){
+        // this was for debugging
+        return {
+            topLeft: this.holeCell.isAtTopLeft(),
+            topRight: this.holeCell.isAtTopRight(),
+            bottomLeft: this.holeCell.isAtBottomLeft(),
+            bottomRight: this.holeCell.isAtBottomRight(),
+            sideLeft: this.holeCell.isAtSideLeft(),
+            sideRight: this.holeCell.isAtSideRight(),
+            sideTop: this.holeCell.isAtSideTop(),
+            sideBottom: this.holeCell.isAtSideBottom(),
+            surrounded: this.holeCell.isSurrounded()
+        }
+    }
 
     loadState(){
         /** Loads resolved state from UI memory
@@ -84,6 +103,7 @@ class Puzzle{
         // set hole as last elems
         const $box = $last_element;
         $box.addClass('box-hole');
+
         this.$holeDomElem = $box;
         
         // state
