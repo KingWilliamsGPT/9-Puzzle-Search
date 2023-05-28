@@ -33,8 +33,8 @@ class Puzzle{
         // state
         this.rows = null;
         this.cols = null;
-        this.initialState = null;
-        this.currentState = null;
+        this.initialState = null;  // Map()
+        this.currentState = null;  // Map()
         this.$holeDomElem = null;
         // agent
         this.agent = null;

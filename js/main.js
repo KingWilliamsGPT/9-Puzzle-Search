@@ -611,7 +611,7 @@ const search = new (function(){
                 otherCell = sCells.right;
             }
             else if (action == MOVES.LEFT) {
-                // move hole left
+                // move hole left 
                 s.set(this.$hole, sCells.left);
                 s.set(alt.get(sCells.left), hold);
 
@@ -623,8 +623,11 @@ const search = new (function(){
             // @!experimental - update ui while searching
             // setTimeout(()=>this._env._swap(this.$hole, alt.get(otherCell)), 1000);
             // sleep(500);
-            console.log(alt.get(otherCell));
-            this._env.swap(alt.get(otherCell));
+
+            // this part is only here for debugging
+            // console.log('swapping hole with', alt.get(otherCell));
+            // // this._env.swap(alt.get(otherCell));
+            // // this._state = copyStateMap(this._env.currentState); // update state map
 
             return new State(s, this._env, action);
         }
@@ -733,10 +736,10 @@ const search = new (function(){
             const goal = new Node(this.resolvedState);
 
             // start frontier with initial state
-            const initialState = new State(initialStateMap, this.env);
+            const initialState = new State(copyStateMap(initialStateMap), this.env);
             const node = new Node(initialState);
             frontier.add(node);
-
+            let i=0;
 
             while (true){
                 if(frontier.isEmpty){
@@ -746,7 +749,7 @@ const search = new (function(){
                 // remove a single node from the frontier
                 let node = frontier.pop();
                 
-                console.log("Pick a node");
+                console.log("Pick a node", node.state.primitiveState, 'Trial', i+1);
 
                 if(node.equals(goal)){
                     // found solution
@@ -764,6 +767,7 @@ const search = new (function(){
                         explored_set.add(node);
                     }
                 }
+                i++;
             }
         }
     }
